@@ -1,15 +1,16 @@
 let uNet;
 let myMask;
+let handpose;
+let handResult;
 
-let timer;
+let video;
 
-function preload() {
-  uNet = ml5.uNet('face');
-}
+let thumbsupCount = 0;
+let fingerNumberCount = [0, 0, 0, 0, 0, 0];
 
 function setup() {
-
-  timer = new TimerViewer();
+  frameRate(30);
+  uNet = ml5.uNet('face');
 
   let url = location.search;
   console.log('start');
@@ -18,103 +19,152 @@ function setup() {
   let myCanvas = createCanvas(windowWidth, windowHeight);
   myCanvas.parent('myCanvas');
 
-  // const input = createInput('');
-  // input.elt.type = 'number';
-  // input.input(() => {
-  //   timer.second = input.value();
-  // });
-  // const startBtn = createButton('start');
-  // startBtn.mousePressed(() => {
-  //   timer.start();
-  // });
-
   // load up your video
-  const video = createCapture(VIDEO, () => {
-    uNet.segment(video, gotResult);
+  video = createCapture(VIDEO, () => {
+    // マスク
+    // uNet.segment(video, unetResult);
+    function unetResult(error, result) {
+      if (error) {
+        console.error(error);
+        return;
+      }
+      myMask = result.backgroundMask;
+      uNet.segment(video, unetResult);
+    }
+
+    // 手検出
+    handpose = ml5.handpose(video, () => {
+      console.log('Model Loaded!');
+    });
+    handpose.on('predict', result => {
+      handResult = result;
+    });
   });
   video.size(width, height);
   video.hide(); // Hide the video element, and just show the canvas
-  function gotResult(error, result) {
-    if (error) {
-      console.error(error);
-      return;
-    }
-    myMask = result.backgroundMask;
-    uNet.segment(video, gotResult);
-  }
 }
 
 function draw() {
   background(255);
 
-  // console.log(timer.second, timer.minute);
-  timer.setPosition(width / 2, height / 4);
-  timer.setSize(150);
-  // timer.display();
-
+  image(video, 0, 0, width, height);
   if (myMask) {
     image(myMask, 0, 0, width, height);
   }
-}
 
-class Timer {
-  constructor() {
-    this.mSec = 0;
-    this.sec = 0;
-    this.min = 0;
-    this.timer = null;
-  }
+  if (handResult && handResult[0]) {
 
-  set minute(min) {
-    this.min = parseInt(min);
-  }
-  get minute() {
-    return this.min;
-  }
-  set second(sec) {
-    this.sec = parseInt(sec);
-  }
-  get second() {
-    return this.sec;
-  }
+    // drawHand(handResult[0]);
 
-  start() {
-    this.timer = setInterval(() => {
-      this.countDown();
-    }, 1000);
-  }
-
-  stop() {
-    clearInterval(this.timer);
-  }
-
-  countDown() {
-    if ((this.min == 0) && (this.sec == 0)) {
-      // reSet();
-      // finish
+    if (isThumbsup(handResult[0])) {
+      thumbsupCount++;
+      // console.log('thumbs up count:' + thumbsupCount);
     }
     else {
-      if (this.sec == 0) {
-        this.min--;
-        this.sec = 60;
+      thumbsupCount = 0;
+
+      let fingerNum = getNumbersWithFingers(handResult[0]);
+      for (let i = 0; i < 6; i++) {
+        if (i == fingerNum) {
+          fingerNumberCount[i]++;
+          if (fingerNumberCount[i] > 30) {
+            setTime(i * 60); // index.htmlの関数呼び出し todo
+          }
+        }
+        else {
+          fingerNumberCount[i] = 0;
+        }
       }
-      this.sec--;
+    }
+    if (thumbsupCount > 30) {
+      thumbsupCount = -1000;
+
+      clickStartButton(); // index.htmlの関数呼び出し todo
     }
   }
 }
 
-class TimerViewer extends Timer {
-  setPosition(x, y) {
-    this.x = x;
-    this.y = y;
+// function mousePressed() {
+//   if (mouseX > 0 && mouseX < 100 && mouseY > 0 && mouseY < 100) {
+//     let fs = fullscreen();
+//     fullscreen(!fs);
+//   }
+// }
+
+function drawHand(hand) {
+  const landmarks = hand.landmarks;
+  // 骨
+  strokeWeight(2);
+  noFill();
+  stroke(255);
+  for (let i = 0; i < 5; i++) {
+    beginShape();
+    // vertex(landmarks[0][0], landmarks[0][1], landmarks[0][2]);//付け根から
+    // for (let j = 0; j < 4; j++) {
+    //   const ind = i * 4 + 1 + j;
+    //   vertex(landmarks[ind][0], landmarks[ind][1], landmarks[ind][2]);
+    // }
+    vertex(landmarks[0][0], landmarks[0][1]);//付け根から
+    for (let j = 0; j < 4; j++) {
+      const ind = i * 4 + 1 + j;
+      vertex(landmarks[ind][0], landmarks[ind][1]);
+    }
+    endShape();
   }
-  setSize(size) {
-    this.size = size;
-  }
-  display() {
-    fill(0);
-    textSize(this.size);
-    textAlign(CENTER, CENTER);
-    text(this.min + ' : ' + this.sec, this.x, this.y);
+
+  // 数字
+  fill(0);
+  noStroke();
+  textAlign(CENTER, CENTER);
+  textSize(20);
+  for (let i = 0; i < landmarks.length; i++) {
+    // 3D loadFontなども必要
+    // push();
+    // translate(landmarks[i][0], landmarks[i][1], landmarks[i][2]);
+    // text(i, 0, 0);
+    // pop();
+
+    //2D
+    text(i, landmarks[i][0], landmarks[i][1]);
   }
 }
+
+function isThumbsup(hand) {
+  const anno = hand.annotations;
+
+  if (anno.thumb[3][1] < anno.thumb[2][1]
+    && anno.palmBase[0][0] < anno.pinky[0][0]
+    && anno.indexFinger[3][0] < anno.indexFinger[2][0]) {
+    return true;
+  }
+  return false;
+}
+
+function getNumbersWithFingers(hand) {
+  const annotations = hand.annotations;
+
+  let number = 0;
+  // 右手限定
+  // 親指が立っているかどうか
+  if (annotations.thumb[3][0] > annotations.thumb[2][0]) {
+    number++;
+  }
+
+  if (annotations.indexFinger[3][1] < annotations.indexFinger[2][1]) {
+    number++;
+  }
+  if (annotations.middleFinger[3][1] < annotations.middleFinger[2][1]) {
+    number++;
+  }
+  if (annotations.ringFinger[3][1] < annotations.ringFinger[2][1]) {
+    number++;
+  }
+  if (annotations.pinky[3][1] < annotations.pinky[2][1]) {
+    number++;
+  }
+
+  return number;
+}
+
+
+

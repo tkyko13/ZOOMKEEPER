@@ -6,8 +6,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.2.0/p5.min.js"></script>
   <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
 
-  <!-- <script src="https://code.createjs.com/1.0.0/tweenjs.min.js"></script> -->
-
   <!-- UIkit CSS -->
   <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.6.16/dist/css/uikit.min.css" /> -->
 
@@ -65,13 +63,13 @@
               </div>
             </td>
             <td>
-              <button id="start-button" type="button" onclick="clickStartButton()">start</button>
+              <button>start</button>
             </td>
           </tr>
           <td></td>
           <td>
-            <input id='input' value="00:00" type="text"
-              style="width:15rem; border:solid 0px; font-size:80px; background: #00000000 " />
+            <input id='input' type="text"
+              style="width:8rem; border:solid 0px; font-size:50px; background: #00000000 " />
           </td>
         </tbody>
       </table>
@@ -81,8 +79,6 @@
   <script>
     let slider = document.getElementById('slider');
     let input = document.getElementById('input');
-    let startButton = document.getElementById('start-button');
-    let isCountdown = false;
 
     slider.addEventListener('mousemove', (event) => {
       input.value = sec2text(slider.valueAsNumber);
@@ -95,39 +91,7 @@
       // return 
     }
 
-    function setTime(sec) {
-      slider.value = sec; // うにょって動かしたい
-      // targetSliderVal = sec;
-      input.value = sec2text(slider.valueAsNumber);
-    }
 
-    function clickStartButton() {
-      if(isCountdown) {
-        stopTimer();
-      }
-      else {
-        startTimer();
-      }
-    }
-
-    let countDown;
-    function startTimer() {
-        countDown = setInterval(() => {
-        setTime(slider.value - 1);
-        if (slider.value == 0) {
-          stopTimer();
-        }
-      }, 1000);
-      isCountdown = true;
-      startButton.innerHTML = 'stop';
-    }
-    function stopTimer() {
-      if(countDown) {
-        clearInterval(countDown);
-      }
-      isCountdown = false;
-      startButton.innerHTML = 'start';
-    }
 
   </script>
   <script src="sketch.js"></script>

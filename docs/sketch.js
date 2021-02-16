@@ -8,6 +8,8 @@ let video;
 let thumbsupCount = 0;
 let fingerNumberCount = [0, 0, 0, 0, 0, 0];
 
+let isDebugDraw = false;
+
 function setup() {
   frameRate(30);
   uNet = ml5.uNet('face');
@@ -54,7 +56,9 @@ function draw() {
 
   if (handResult && handResult[0]) {
 
-    // drawHand(handResult[0]);
+    if (isDebugDraw) {
+      drawHand(handResult[0]);
+    }
 
     if (isThumbsup(handResult[0])) {
       thumbsupCount++;
@@ -84,12 +88,11 @@ function draw() {
   }
 }
 
-// function mousePressed() {
-//   if (mouseX > 0 && mouseX < 100 && mouseY > 0 && mouseY < 100) {
-//     let fs = fullscreen();
-//     fullscreen(!fs);
-//   }
-// }
+function mousePressed() {
+  if (mouseX > 0 && mouseX < 100 && mouseY > 0 && mouseY < 100) {
+    isDebugDraw = !isDebugDraw;
+  }
+}
 
 function drawHand(hand) {
   const landmarks = hand.landmarks;
